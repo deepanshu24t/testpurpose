@@ -1,0 +1,263 @@
+<script src="https://www.hippoobox.com/static/sdk/adsdk_1.8.0.0.js"></script>
+  <script>
+  
+  window.h5sdk.init(4002244,"","","","",{
+            ga: {
+                id: "G-L2NLPJNTLS",
+            },
+            adsence: {
+                client: "ca-pub-7112055678212370",
+                "data-ad-frequency-hint": "45s",
+                "data-adbreak-test": "on",
+                callback: () => {
+                    window.h5sdk.adConfig({
+                        preloadAdBreaks: "on",
+                        onReady: () => {
+                            console.log("😋 ", "adconfig success");
+                            window.h5sdk.adBreak({
+                                type: "preroll",
+                                name: "mypreroll",
+                                adBreakDone: () => {
+                                    console.log("😋 adBreakDone outside");
+                                },
+                            });
+                        },
+                    });
+                },
+            },
+        });
+
+      const iframe = document.getElementsByTagName("iframe");
+        // 向iframe发送消息
+    function postMessageToIframe(params) {
+      iframe.contentWindow.postMessage(
+        JSON.stringify(params),
+        "*" // iframe的域名
+      );
+    }
+
+   
+    let showAdFnRef = null;
+
+    // 注册消息接收
+    window.addEventListener("message", (e) => {
+      // 根据消息来源的域名，判断是否过滤
+      console.log(e, "从iframe发过来的消息");
+      try {
+       
+        const paramsFromIframe = JSON.parse(e.data);
+        // 根据func，执行不同广告
+        if (paramsFromIframe.func === "adBreakStart") {
+          window.h5sdk.adBreak({
+            type: "start",
+            name: "my_start",
+            beforeAd: () => {
+              console.log("beforeAd");
+            },
+            afterAd: () => {
+              console.log("afterAd");
+            },
+            adBreakDone: (placementInfo) => {
+              const paramsToIframe = {
+                func: "adBreakDoneStart",
+              };
+              postMessageToIframe({
+                func: "adBreakDoneStart",
+                placementInfo,
+              });
+            },
+          });
+        } 
+        
+        // else if (paramsFromIframe.func === "adBreakReward") {
+        //   window.h5sdk.adBreak({
+        //     type: "reward",
+        //     name: "my_reward",
+        //     beforeAd: () => {
+        //       console.log("beforeAd");
+        //     },
+        //     afterAd: () => {
+        //       console.log("afterAd");
+        //     },
+        //     adDismissed: () => {
+        //       console.log("adDismissed");
+        //     },
+        //     adViewed: () => {
+        //       console.log("adViewed");
+        //     },
+        //     beforeReward: (showAdFn) => {
+        //       console.log("beforeReward");
+        //       showAdFn();
+        //     },
+        //     adBreakDone: (placementInfo) => {
+        //       postMessageToIframe({
+        //         func: "adBreakDoneReward",
+        //         placementInfo,
+        //       });
+        //     },
+        //   });
+        // }
+
+    else if (paramsFromIframe.func === "adBreakReward") { 
+    // Check if the timer has exceeded the minimum advertisement time
+    if (timer.getTimeCount_Reward() > minAdvTime_Reward) {
+        window.h5sdk.adBreak({
+            type: "reward",
+            name: "my_reward",
+            beforeAd: () => {
+                console.log("displayRewardAd >> beforeAd fired!");
+                c3_callFunction("muteSound", [0]);
+                c3_callFunction("pauseGame", [0]);
+                timer.resetTimeCount_Reward();
+                console.log("beforeAd");
+            },
+            afterAd: () => {
+                c3_callFunction("unmuteSound", [0]);
+                c3_callFunction("resumeGame", [0]);
+                console.log("afterAd");
+            },
+            adDismissed: () => {
+                c3_callFunction("adInterrupted", [0]);
+                console.log("reward ad dismissed");
+                console.log("adDismissed");
+            },
+            adViewed: () => {
+                console.log("reward ad complete GRATIFYING now");
+                c3_callFunction("gratifyUser", [0]);
+                console.log("adViewed");
+            },
+            beforeReward: (showAdFn) => {
+                showAdFnRef = showAdFn;
+                c3_callFunction("displayAdPrompt", [0]);
+                console.log("reward ad is AVAILABLE");
+                console.log("beforeReward");
+                //showAdFn();
+            },
+            adBreakDone: (placementInfo) => {
+                postMessageToIframe({
+                    func: "adBreakDoneReward",
+                    placementInfo,
+                });
+            },
+        });
+    } else {
+        console.log(
+            `${minAdvTime_Reward}s is not passed yet..! Left: ${minAdvTime_Reward - timer.getTimeCount_Reward()}s`
+        );
+    }
+}
+
+         else if (paramsFromIframe.func === "floatShow") {
+          window.h5sdk.show(
+            paramsFromIframe.top,
+            paramsFromIframe.left,
+            paramsFromIframe.bottom,
+            paramsFromIframe.right,
+            paramsFromIframe.style
+          );
+        } else if (paramsFromIframe.func === "floatHide") {
+          window.h5sdk.hide();
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    });
+
+
+function startRewardAd() {
+    if (showAdFnRef) {
+        console.log("showing reward AD");
+        showAdFnRef();
+    } else {
+        console.log("showAdFnRef >> ", showAdFnRef);
+        c3_callFunction("gratifyUser", [0]);
+        clearTimeout(rewardTimeOut);
+    }
+}
+
+    function postMessageToParent(params) {
+      window.parent.postMessage(
+        JSON.stringify(params),
+        "*" // iframe的域名
+      );
+    }
+
+    // 注册消息接收
+    window.addEventListener("message", (e) => {
+      // 根据消息来源的域名，判断是否过滤
+      console.log(e, "从iframe发过来的消息");
+      try {
+        const iframe = document.getElementById("iframe");
+        const paramsFromParent = JSON.parse(e.data);
+        // 根据func，执行不同广告
+        if (paramsFromParent.func === "adBreakStart") {
+          window.h5sdk.adBreak({
+            type: "start",
+            name: "my_start",
+            beforeAd: () => {
+              console.log("beforeAd");
+            },
+            afterAd: () => {
+              console.log("afterAd");
+            },
+            adBreakDone: (placementInfo) => {
+              const paramsToParent = {
+                func: "adBreakDoneStart",
+              };
+              postMessageToIframe({
+                func: "adBreakDoneStart",
+                placementInfo,
+              });
+            },
+          });
+        } else if (paramsFromParent.func === "adBreakReward") {
+          window.h5sdk.adBreak({
+            type: "reward",
+            name: "my_reward",
+            beforeAd: () => {
+              console.log("beforeAd");
+            },
+            afterAd: () => {
+              console.log("afterAd");
+            },
+            adDismissed: () => {
+              console.log("adDismissed");
+            },
+            adViewed: () => {
+              console.log("adViewed");
+            },
+            beforeReward: (showAdFn) => {
+              console.log("beforeReward");
+              showAdFn();
+            },
+            adBreakDone: (placementInfo) => {
+              postMessageToIframe({
+                func: "adBreakDoneReward",
+                placementInfo,
+              });
+            },
+          });
+        } else if (paramsFromParent.func === "floatShow") {
+          window.h5sdk.show(
+            paramsFromParent.top,
+            paramsFromParent.left,
+            paramsFromParent.bottom,
+            paramsFromParent.right,
+            paramsFromParent.style
+          );
+        } else if (paramsFromParent.func === "floatHide") {
+          window.h5sdk.hide();
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    });
+  
+  
+
+
+
+function displayAd(){
+  // postMessageToIframe();
+  postMessageToParent({ func: "adBreakStart" })
+}
